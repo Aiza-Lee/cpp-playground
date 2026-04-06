@@ -1,0 +1,90 @@
+{
+	"version": 6,
+	"cmakeMinimumRequired": {
+		"major": 3,
+		"minor": 28,
+		"patch": 0
+	},
+	"configurePresets": [
+		{
+			"name": "base",
+			"hidden": true,
+			"generator": "Ninja",
+			"binaryDir": "${sourceDir}/build/${presetName}",
+			"toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+			"cacheVariables": {
+				"CMAKE_CXX_COMPILER": "/usr/bin/g++-14",
+				"CMAKE_CXX_STANDARD": "23"
+			}
+		},
+		{
+			"name": "gcc14-debug",
+			"inherits": "base",
+			"displayName": "GCC 14 Debug",
+			"description": "Debug build with g++-14 and vcpkg manifest mode.",
+			"cacheVariables": {
+				"BUILD_TESTING": "ON",
+				"CMAKE_BUILD_TYPE": "Debug"
+			}
+		},
+		{
+			"name": "gcc14-debug-no-tests",
+			"inherits": "base",
+			"displayName": "GCC 14 Debug (No Tests)",
+			"description": "Debug build with g++-14 and tests disabled.",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Debug",
+				"BUILD_TESTING": "OFF"
+			}
+		},
+		{
+			"name": "gcc14-release",
+			"inherits": "base",
+			"displayName": "GCC 14 Release",
+			"description": "Release build with g++-14 and vcpkg manifest mode.",
+			"cacheVariables": {
+				"BUILD_TESTING": "ON",
+				"CMAKE_BUILD_TYPE": "Release"
+			}
+		},
+		{
+			"name": "gcc14-asan",
+			"inherits": "base",
+			"displayName": "GCC 14 ASan",
+			"description": "Debug build with AddressSanitizer and UndefinedBehaviorSanitizer.",
+			"cacheVariables": {
+				"BUILD_TESTING": "ON",
+				"CMAKE_BUILD_TYPE": "Debug",
+				"CPP_PLAYGROUND_ENABLE_ASAN": "ON",
+				"CPP_PLAYGROUND_ENABLE_UBSAN": "ON"
+			}
+		}
+	],
+	"buildPresets": [
+		{
+			"name": "gcc14-debug",
+			"configurePreset": "gcc14-debug"
+		},
+		{
+			"name": "gcc14-debug-no-tests",
+			"configurePreset": "gcc14-debug-no-tests"
+		},
+		{
+			"name": "gcc14-release",
+			"configurePreset": "gcc14-release"
+		},
+		{
+			"name": "gcc14-asan",
+			"configurePreset": "gcc14-asan"
+		}
+	],
+	"testPresets": [
+		{
+			"name": "gcc14-debug",
+			"configurePreset": "gcc14-debug",
+			"output": {
+				"outputOnFailure": true
+			}
+		}
+	]
+}

@@ -1,0 +1,7 @@
+CompileFlags:
+  CompilationDatabase: build/gcc14-debug
+  Compiler: /usr/bin/clang++-20
+  Remove:
+    - -fmodules-ts
+    - -fmodule-mapper=*
+    - -fdeps-format=*

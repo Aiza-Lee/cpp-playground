@@ -1,0 +1,95 @@
+#include "automata/nfa_dfa/output.hpp"
+
+#include <map>
+#include <ostream>
+#include <string_view>
+#include <utility>
+#include <vector>
+
+#include <fmt/format.h>
+#include <fmt/ranges.h>
+
+namespace automata::nfa_dfa {
+
+namespace {
+
+[[nodiscard]] auto group_edge_labels(const AutomatonInput& automaton, const DfaResult& dfa)
+	-> std::map<std::pair<Mask, Mask>, std::vector<std::string_view>> {
+	std::map<std::pair<Mask, Mask>, std::vector<std::string_view>> grouped_edges;
+	for (const auto& edge : dfa.edges) {
+		grouped_edges[{edge.from, edge.to}].push_back(automaton.alphabet[edge.symbol_index]);
+	}
+	return grouped_edges;
+}
+
+void write_nfa_transition_table(const AutomatonInput& nfa, std::ostream& output) {
+	output << "Equivalent NFA Transition Table\n";
+	output << "State";
+	for (const auto& symbol : nfa.alphabet) {
+		output << '\t' << symbol;
+	}
+	output << '\n';
+
+	for (int state = 0; state < nfa.state_count; ++state) {
+		output << state;
+		for (const auto next_mask : nfa.transitions[to_size(state)]) {
+			output << '\t' << mask_to_set(next_mask, nfa.state_count);
+		}
+		output << '\n';
+	}
+}
+
+}  // namespace
+
+void write_result(
+	const AutomatonInput& source_automaton,
+	const AutomatonInput& reduced_nfa,
+	const DfaResult& dfa,
+	std::ostream& output) {
+	output << fmt::format("Input Mode: {}\n", kind_name(source_automaton.kind));
+	output << fmt::format("Equivalent NFA Start State: {}\n", reduced_nfa.start_state);
+	write_nfa_transition_table(reduced_nfa, output);
+	output << '\n';
+
+	output << fmt::format(
+		"Start DFA State: {} {}\n",
+		mask_to_binary(dfa.start_state, source_automaton.state_count),
+		mask_to_set(dfa.start_state, source_automaton.state_count));
+	output << fmt::format("Reachable DFA states: {}\n", dfa.reachable_states.size());
+	for (const auto state_mask : dfa.reachable_states) {
+		output << fmt::format(
+			"{} {}\n",
+			mask_to_binary(state_mask, source_automaton.state_count),
+			mask_to_set(state_mask, source_automaton.state_count));
+	}
+	output << '\n';
+
+	output << "DFA Transition Table\n";
+	output << "State";
+	for (const auto& symbol : source_automaton.alphabet) {
+		output << '\t' << symbol;
+	}
+	output << '\n';
+
+	for (std::size_t row_index = 0; row_index < dfa.reachable_states.size(); ++row_index) {
+		output << mask_to_binary(dfa.reachable_states[row_index], source_automaton.state_count);
+		for (const auto next_mask : dfa.transition_table[row_index]) {
+			output << '\t' << mask_to_binary(next_mask, source_automaton.state_count);
+		}
+		output << '\n';
+	}
+	output << '\n';
+
+	output << "DFA Graph Edges\n";
+	output << "from\tto\tlabel\n";
+	for (const auto& [endpoints, labels] : group_edge_labels(source_automaton, dfa)) {
+		const auto& [from, to] = endpoints;
+		output << fmt::format(
+			"{}\t{}\t{}\n",
+			mask_to_binary(from, source_automaton.state_count),
+			mask_to_binary(to, source_automaton.state_count),
+			fmt::join(labels, ","));
+	}
+}
+
+}  // namespace automata::nfa_dfa
