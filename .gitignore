@@ -1,3 +1,5 @@
 build/
 .cache/
 .codex
+tmp/
+temp/

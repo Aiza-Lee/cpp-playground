@@ -6,7 +6,15 @@
 		"cxxopts",
 		"fmt",
 		"nlohmann-json",
-		"spdlog"
+		"spdlog",
+		"tinyobjloader",
+		"glfw3",
+		"glm",
+		"imgui",
+		"stb",
+		"glad",
+		"eigen3",
+		"tinygltf"
 	],
 	"features": {
 		"tests": {

@@ -4,7 +4,8 @@ set(automata_nfa_dfa_sources
 	src/nfa_dfa/app.cpp
 	src/nfa_dfa/model.cpp
 	src/nfa_dfa/output.cpp
-	src/nfa_dfa/parser.cpp)
+	src/nfa_dfa/parser.cpp
+)
 
 # 核心库目标（便于复用与测试）
 add_library(automata_nfa_dfa_lib STATIC ${automata_nfa_dfa_sources})
