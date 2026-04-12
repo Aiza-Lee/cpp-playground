@@ -103,6 +103,15 @@ using Json = nlohmann::json;
 	return std::unexpected("use_epsilon must be a boolean or 0/1 integer");
 }
 
+[[nodiscard]] auto read_accept_states(const Json& root, const int state_count)
+	-> std::expected<Mask, std::string> {
+	if (!root.contains("accept_states")) {
+		return Mask{0};
+	}
+
+	return read_state_mask_from_json(root.at("accept_states"), state_count, "accept_states");
+}
+
 }  // namespace
 
 auto read_automaton(std::istream& input) -> std::expected<AutomatonInput, std::string> {
@@ -215,6 +224,12 @@ auto read_automaton_json(std::istream& input) -> std::expected<AutomatonInput, s
 			return std::unexpected(use_epsilon.error());
 		}
 		automaton.kind = *use_epsilon ? AutomatonKind::K_EPSILON_NFA : AutomatonKind::K_NFA;
+
+		const auto accept_states = read_accept_states(root, automaton.state_count);
+		if (!accept_states) {
+			return std::unexpected(accept_states.error());
+		}
+		automaton.accept_states = *accept_states;
 
 		for (const auto& symbol : root.at("alphabet")) {
 			if (!symbol.is_string()) {

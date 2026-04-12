@@ -2,6 +2,7 @@
   "state_count": 4,
   "alphabet": ["a", "b"],
   "start_state": 0,
+  "accept_states": [3],
   "use_epsilon": true,
   "epsilon_transitions": [[1], [2], [], []],
   "transitions": [

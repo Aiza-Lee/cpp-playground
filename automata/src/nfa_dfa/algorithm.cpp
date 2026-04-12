@@ -1,10 +1,12 @@
 #include "automata/nfa_dfa/algorithm.hpp"
 
 #include <algorithm>
+#include <map>
 #include <queue>
 #include <span>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace automata::nfa_dfa {
@@ -89,6 +91,7 @@ auto reduce_to_nfa(const AutomatonInput& automaton) -> AutomatonInput {
 	reduced.start_state = automaton.start_state;
 	reduced.kind = AutomatonKind::K_NFA;
 	reduced.alphabet = automaton.alphabet;
+	reduced.accept_states = automaton.accept_states;
 	reduced.epsilon_transitions.assign(to_size(reduced.state_count), 0);
 	reduced.transitions.assign(
 		to_size(reduced.state_count),
@@ -96,6 +99,9 @@ auto reduce_to_nfa(const AutomatonInput& automaton) -> AutomatonInput {
 
 	for (int state = 0; state < reduced.state_count; ++state) {
 		const auto closure = single_closures[to_size(state)];
+		if ((closure & automaton.accept_states) != 0) {
+			reduced.accept_states |= state_bit(state);
+		}
 		for (std::size_t symbol_index = 0; symbol_index < reduced.symbol_count(); ++symbol_index) {
 			const auto moved = move_from_mask(automaton, closure, symbol_index);
 			reduced.transitions[to_size(state)][symbol_index] = closure_of_mask(moved, single_closures);
@@ -154,16 +160,157 @@ auto build_dfa(const AutomatonInput& automaton) -> DfaResult {
 
 	std::vector<std::vector<Mask>> transition_table;
 	transition_table.reserve(reachable_states.size());
+	std::vector<bool> accepting_states;
+	accepting_states.reserve(reachable_states.size());
 	for (const auto state_mask : reachable_states) {
 		transition_table.push_back(transition_rows.at(state_mask));
+		accepting_states.push_back((state_mask & automaton.accept_states) != 0);
 	}
 
 	return {
 		.start_state = start_state,
 		.reachable_states = std::move(reachable_states),
 		.transition_table = std::move(transition_table),
+		.accepting_states = std::move(accepting_states),
 		.edges = std::move(edges),
 	};
+}
+
+auto minimize_dfa(const DfaResult& dfa) -> MinimizedDfaResult {
+	if (dfa.reachable_states.empty()) {
+		return {};
+	}
+
+	std::unordered_map<Mask, int> state_to_index;
+	state_to_index.reserve(dfa.reachable_states.size());
+	for (std::size_t index = 0; index < dfa.reachable_states.size(); ++index) {
+		state_to_index.emplace(dfa.reachable_states[index], static_cast<int>(index));
+	}
+
+	std::vector<std::vector<int>> partitions;
+	std::vector<int> non_accepting_states;
+	std::vector<int> accepting_states;
+	for (std::size_t index = 0; index < dfa.reachable_states.size(); ++index) {
+		if (dfa.accepting_states[index]) {
+			accepting_states.push_back(static_cast<int>(index));
+		} else {
+			non_accepting_states.push_back(static_cast<int>(index));
+		}
+	}
+
+	if (!non_accepting_states.empty()) {
+		partitions.push_back(non_accepting_states);
+	}
+	if (!accepting_states.empty()) {
+		partitions.push_back(accepting_states);
+	}
+
+	while (true) {
+		std::vector<int> state_to_partition(dfa.reachable_states.size(), -1);
+		for (std::size_t partition_index = 0; partition_index < partitions.size(); ++partition_index) {
+			for (const auto state_index : partitions[partition_index]) {
+				state_to_partition[to_size(state_index)] = static_cast<int>(partition_index);
+			}
+		}
+
+		std::vector<std::vector<int>> next_partitions;
+		bool changed = false;
+		for (const auto& partition : partitions) {
+			std::map<std::vector<int>, std::vector<int>> grouped_states;
+			for (const auto state_index : partition) {
+				std::vector<int> signature;
+				signature.reserve(dfa.transition_table[to_size(state_index)].size());
+				for (const auto next_mask : dfa.transition_table[to_size(state_index)]) {
+					signature.push_back(state_to_partition.at(to_size(state_to_index.at(next_mask))));
+				}
+				grouped_states[std::move(signature)].push_back(state_index);
+			}
+
+			changed = changed || grouped_states.size() > 1;
+			for (auto& [signature, group] : grouped_states) {
+				(void)signature;
+				next_partitions.push_back(std::move(group));
+			}
+		}
+
+		if (!changed) {
+			partitions = std::move(next_partitions);
+			break;
+		}
+
+		for (auto& partition : next_partitions) {
+			std::ranges::sort(partition, [&](const int lhs, const int rhs) {
+				return dfa.reachable_states[to_size(lhs)] < dfa.reachable_states[to_size(rhs)];
+			});
+		}
+		std::ranges::sort(next_partitions, [&](const auto& lhs, const auto& rhs) {
+			return dfa.reachable_states[to_size(lhs.front())] < dfa.reachable_states[to_size(rhs.front())];
+		});
+		partitions = std::move(next_partitions);
+	}
+
+	const auto start_state_index = state_to_index.at(dfa.start_state);
+	std::ranges::sort(partitions, [&](const auto& lhs, const auto& rhs) {
+		const auto lhs_is_start = std::ranges::find(lhs, start_state_index) != lhs.end();
+		const auto rhs_is_start = std::ranges::find(rhs, start_state_index) != rhs.end();
+		if (lhs_is_start != rhs_is_start) {
+			return lhs_is_start;
+		}
+		return dfa.reachable_states[to_size(lhs.front())] < dfa.reachable_states[to_size(rhs.front())];
+	});
+
+	std::vector<int> state_to_partition(dfa.reachable_states.size(), -1);
+	for (std::size_t partition_index = 0; partition_index < partitions.size(); ++partition_index) {
+		for (const auto state_index : partitions[partition_index]) {
+			state_to_partition[to_size(state_index)] = static_cast<int>(partition_index);
+		}
+	}
+
+	MinimizedDfaResult minimized;
+	minimized.merged_states.reserve(partitions.size());
+	minimized.transition_table.reserve(partitions.size());
+	minimized.accepting_states.reserve(partitions.size());
+	minimized.edges.reserve(partitions.size() * (dfa.transition_table.empty() ? 0 : dfa.transition_table.front().size()));
+
+	for (std::size_t partition_index = 0; partition_index < partitions.size(); ++partition_index) {
+		const auto representative = partitions[partition_index].front();
+
+		std::vector<Mask> merged_states;
+		merged_states.reserve(partitions[partition_index].size());
+		for (const auto state_index : partitions[partition_index]) {
+			merged_states.push_back(dfa.reachable_states[to_size(state_index)]);
+		}
+		minimized.merged_states.push_back(std::move(merged_states));
+		minimized.accepting_states.push_back(dfa.accepting_states[to_size(representative)]);
+
+		std::vector<int> row;
+		row.reserve(dfa.transition_table[to_size(representative)].size());
+		for (std::size_t symbol_index = 0; symbol_index < dfa.transition_table[to_size(representative)].size(); ++symbol_index) {
+			const auto next_mask = dfa.transition_table[to_size(representative)][symbol_index];
+			const auto next_state_index = state_to_index.at(next_mask);
+			const auto next_partition = state_to_partition.at(to_size(next_state_index));
+			row.push_back(next_partition);
+			minimized.edges.push_back({
+				.from = static_cast<int>(partition_index),
+				.to = next_partition,
+				.symbol_index = symbol_index,
+			});
+		}
+		minimized.transition_table.push_back(std::move(row));
+	}
+
+	minimized.start_state = state_to_partition.at(to_size(state_to_index.at(dfa.start_state)));
+	std::ranges::sort(minimized.edges, [](const IndexedEdge& lhs, const IndexedEdge& rhs) {
+		if (lhs.from != rhs.from) {
+			return lhs.from < rhs.from;
+		}
+		if (lhs.symbol_index != rhs.symbol_index) {
+			return lhs.symbol_index < rhs.symbol_index;
+		}
+		return lhs.to < rhs.to;
+	});
+
+	return minimized;
 }
 
 }  // namespace automata::nfa_dfa

@@ -10,4 +10,7 @@ namespace automata::nfa_dfa {
 // Build the reachable DFA using epsilon-closure + subset construction.
 [[nodiscard]] auto build_dfa(const AutomatonInput& automaton) -> DfaResult;
 
+// Minimize the reachable DFA via partition refinement.
+[[nodiscard]] auto minimize_dfa(const DfaResult& dfa) -> MinimizedDfaResult;
+
 }  // namespace automata::nfa_dfa

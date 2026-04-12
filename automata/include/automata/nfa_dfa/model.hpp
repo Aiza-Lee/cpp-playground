@@ -27,6 +27,7 @@ struct AutomatonInput {
 	int start_state = 0;
 	AutomatonKind kind = AutomatonKind::K_NFA;
 	std::vector<std::string> alphabet;
+	Mask accept_states = 0;
 	std::vector<Mask> epsilon_transitions;
 	std::vector<std::vector<Mask>> transitions;
 
@@ -43,7 +44,22 @@ struct DfaResult {
 	Mask start_state = 0;
 	std::vector<Mask> reachable_states;
 	std::vector<std::vector<Mask>> transition_table;
+	std::vector<bool> accepting_states;
 	std::vector<Edge> edges;
+};
+
+struct IndexedEdge {
+	int from = 0;
+	int to = 0;
+	std::size_t symbol_index = 0;
+};
+
+struct MinimizedDfaResult {
+	int start_state = 0;
+	std::vector<std::vector<Mask>> merged_states;
+	std::vector<std::vector<int>> transition_table;
+	std::vector<bool> accepting_states;
+	std::vector<IndexedEdge> edges;
 };
 
 [[nodiscard]] constexpr auto to_size(int value) -> std::size_t {

@@ -5,6 +5,7 @@ set(automata_nfa_dfa_sources
 	src/nfa_dfa/model.cpp
 	src/nfa_dfa/output.cpp
 	src/nfa_dfa/parser.cpp
+	src/nfa_dfa/regex.cpp
 )
 
 # 核心库目标（便于复用与测试）

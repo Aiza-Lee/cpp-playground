@@ -7,8 +7,16 @@
 
 namespace automata::nfa_dfa {
 
+enum class ProgramInputKind {
+	K_JSON_AUTOMATON,
+	K_REGEX_EXPRESSION,
+	K_REGEX_FILE,
+};
+
 struct ProgramOptions {
+	ProgramInputKind input_kind = ProgramInputKind::K_JSON_AUTOMATON;
 	std::filesystem::path input_path;
+	std::string regex_text;
 	bool show_help = false;
 	std::string help_text;
 };
