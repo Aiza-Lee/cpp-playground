@@ -63,19 +63,23 @@
 	"buildPresets": [
 		{
 			"name": "gcc14-debug",
-			"configurePreset": "gcc14-debug"
+			"configurePreset": "gcc14-debug",
+			"jobs": 0
 		},
 		{
 			"name": "gcc14-debug-no-tests",
-			"configurePreset": "gcc14-debug-no-tests"
+			"configurePreset": "gcc14-debug-no-tests",
+			"jobs": 0
 		},
 		{
 			"name": "gcc14-release",
-			"configurePreset": "gcc14-release"
+			"configurePreset": "gcc14-release",
+			"jobs": 0
 		},
 		{
 			"name": "gcc14-asan",
-			"configurePreset": "gcc14-asan"
+			"configurePreset": "gcc14-asan",
+			"jobs": 0
 		}
 	],
 	"testPresets": [
